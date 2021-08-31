@@ -114,8 +114,8 @@ int ahttpd_close(int fd) {
     }
     return ret;
 }//ahttpd_close
-int setnoblock(int fd) {
+int ahttpd_setnoblock(int fd) {
     int old_flag = fcntl(fd, F_GETFL);
     fcntl(fd, F_SETFL, old_flag | O_NONBLOCK);
     return old_flag;
-}//setnoblock
+}//ahttpd_setnoblock

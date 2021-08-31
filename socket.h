@@ -18,5 +18,5 @@ ssize_t ahttpd_write(int fd, void *buf, size_t nbytes);
 
 int ahttpd_close(int fd);
 
-int setnoblock(int fd);
+int ahttpd_setnoblock(int fd);
 #endif

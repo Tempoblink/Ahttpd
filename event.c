@@ -5,14 +5,8 @@
 #include "threadpool.h"
 #include <errno.h>
 #include <fcntl.h>
-#include <pthread.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/event.h>
-#include <sys/fcntl.h>
-#include <sys/socket.h>
-#include <unistd.h>
 
 typedef struct event_info {
     int *kfd;
@@ -20,7 +14,7 @@ typedef struct event_info {
     void (*cb_func)(void *);
 } event_info;
 
-int ahttpd_event_option(int *kfd, int fd, int filter, int option, void (*func)(void *)) {
+int _ahttpd_event_option(int *kfd, int fd, int filter, int option, void (*func)(void *)) {
     event_info *eb;
     if (option & EV_ADD) {
         eb = malloc(sizeof(event_info));
@@ -31,12 +25,12 @@ int ahttpd_event_option(int *kfd, int fd, int filter, int option, void (*func)(v
     EV_SET(eb->self, fd, filter, option, 0, 0, eb);
     kevent(*kfd, eb->self, 1, NULL, 0, NULL);
     return 0;
-}//ahttpd_event_option
-void ahttpd_event_close(event_info *event) {
+}//_ahttpd_event_option
+void _ahttpd_event_close(event_info *event) {
     ahttpd_close(event->self->ident);
     free(event->self);
-}
-void ahttpd_thread_read(void *arg) {
+}//_ahttpd_event_close
+void _ahttpd_thread_read(void *arg) {
     if (arg == NULL)
         return;
     event_info *event = (event_info *) arg;
@@ -55,11 +49,11 @@ void ahttpd_thread_read(void *arg) {
     }
     ahttpd_close(kfd);
     */
-    ahttpd_event_close(event);
+    _ahttpd_event_close(event);
     ahttpd_log(LOG_INFO, "client close.");
 
-}//ahttpd_thread_read
-void ahttpd_thread_accept(void *arg) {
+}//_ahttpd_thread_read
+void _ahttpd_thread_accept(void *arg) {
     event_info *event = (event_info *) arg;
     int cfd, j;
     for (j = 0; j < event->self->data; j++) {
@@ -72,17 +66,23 @@ void ahttpd_thread_accept(void *arg) {
                 break;
             }
         } else {
-            setnoblock(cfd);
-            ahttpd_event_option(event->kfd, cfd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_ONESHOT, event->cb_func);
+            ahttpd_setnoblock(cfd);
+            _ahttpd_event_option(event->kfd, cfd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_ONESHOT, event->cb_func);
         }
     }
     event->self->data = 0;
-}//ahttpd_thread_accept
+}//_ahttpd_thread_accept
 void ahttpd_event_handler(int sockfd, int backlog, void (*func)(void *)) {
+    struct kevent sockfd_kevent;
+    struct event_info sockfd_event_info;
     struct kevent events[backlog];
-    event_info *dc;
     int kfd = kqueue();
-    ahttpd_event_option(&kfd, sockfd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_CLEAR, func);
+    sockfd_event_info.self = &sockfd_kevent;
+    sockfd_event_info.cb_func = func;
+    sockfd_event_info.kfd = &kfd;
+    EV_SET(&sockfd_kevent, sockfd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_CLEAR, 0, 0, &sockfd_event_info);
+    kevent(kfd, &sockfd_kevent, 1, NULL, 0, NULL);
+
     int ready, i;
     while (1) {
         ready = kevent(kfd, NULL, 0, events, backlog, NULL);
@@ -91,14 +91,12 @@ void ahttpd_event_handler(int sockfd, int backlog, void (*func)(void *)) {
             break;
         }
         for (i = 0; i < ready; i++) {
-            if (events[i].flags & EV_EOF) {
-                ahttpd_event_close((events[i].udata));
-            } else if ((events[i].flags & EVFILT_READ)) {
+            if ((events[i].flags & EVFILT_READ)) {
                 ((event_info *) (events[i].udata))->self->data = events[i].data;
                 if (events[i].ident == sockfd) {
-                    ahttpd_thread_accept(events[i].udata);
+                    _ahttpd_thread_accept(events[i].udata);
                 } else {
-                    ahttpd_threadpool_add(ahttpd_thread_read, events[i].udata);
+                    ahttpd_threadpool_add(_ahttpd_thread_read, events[i].udata);
                 }
             }
         }

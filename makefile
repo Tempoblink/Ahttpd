@@ -10,4 +10,4 @@ $(TARGET):$(OBJ)
 .PYTHON:clean
 
 clean:
-	-rm -f $(OBJ)
+	-rm -f $(OBJ) server

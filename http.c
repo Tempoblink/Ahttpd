@@ -7,13 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <sys/event.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/syslog.h>
 #include <sys/uio.h>
-#include <unistd.h>
 
 #define DEFAULT_SERVER_NAME "Ahttpd/1.0.0"
 #define DEFAULT_HTTP_VERSION "HTTP/1.0"
@@ -47,11 +43,10 @@ typedef struct http_request {
     struct iovec *msg;
 } http_request;
 
-
-void ahttpd_check_request(int fd, http_request *req) {
+void _ahttpd_check_request(int fd, http_request *req) {
     char buf[1024], method[16], version[16];
     int len = sprintf(req->path, DEFAULT_WEB_DIR);
-    int ret = read(fd, buf, sizeof(buf));
+    int ret = ahttpd_read(fd, buf, sizeof(buf));
     if (sscanf(buf, "%[^ ] %[^ ] %[^\r\n]", method, req->path + len, version) != EOF) {
         if (strcasecmp(method, "GET") == 0) {
             req->method = HTTP_METHOD_GET;
@@ -66,9 +61,8 @@ void ahttpd_check_request(int fd, http_request *req) {
     } else {
         req->method = HTTP_METHOD_UNKNOW;
     }
-}
-
-void ahttpd_open_file(http_request *req) {
+}//_ahttpd_check_request
+void _ahttpd_open_file(http_request *req) {
     struct stat file_stat;
     if (req->method == HTTP_METHOD_UNKNOW || req->version == HTTP_VERSION_UNKNOW) {
         sprintf(req->path, "%s/400.html", DEFAULT_WEB_DIR);
@@ -92,11 +86,10 @@ void ahttpd_open_file(http_request *req) {
     (req->msg)[1].iov_len = file_stat.st_size;
     int fd = open(req->path, O_RDONLY);
     (req->msg)[1].iov_base = (void *) mmap(0, file_stat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    close(fd);
+    ahttpd_close(fd);
     req->file_stat = RESOURCE_SUCESS;
-}
-
-void ahttpd_make_response(int fd, http_request *req) {
+}//_ahttpd_open_file
+void _ahttpd_make_response(int fd, http_request *req) {
     if (req->method == HTTP_METHOD_UNKNOW) {
         req->msg[0].iov_len += sprintf((char *) (req->msg[0].iov_base) + req->msg[0].iov_len, "%s %s %s\r\n", DEFAULT_HTTP_VERSION, "400", "Bad Request");
     }
@@ -119,8 +112,7 @@ void ahttpd_make_response(int fd, http_request *req) {
         ahttpd_log(LOG_ERR, "writev error, %s", strerror(errno));
     }
     munmap(req->msg[1].iov_base, req->msg[1].iov_len);
-}
-
+}//_ahttpd_make_response
 void ahttpd_http_process(void *arg) {
     struct kevent *cfd = (struct kevent *) arg;
     http_request *req = (http_request *) malloc(sizeof(http_request));
@@ -131,9 +123,9 @@ void ahttpd_http_process(void *arg) {
     req->msg[0].iov_base = header_buf;
     req->msg[0].iov_len = 0;
     req->msg[1].iov_len = 0;
-    ahttpd_check_request(cfd->ident, req);
-    ahttpd_open_file(req);
-    ahttpd_make_response(cfd->ident, req);
+    _ahttpd_check_request(cfd->ident, req);
+    _ahttpd_open_file(req);
+    _ahttpd_make_response(cfd->ident, req);
     free(req->msg);
     free(req);
-}
+}//ahttpd_http_process

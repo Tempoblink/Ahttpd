@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/fcntl.h>
-#include <sys/time.h>
 #include <syslog.h>
 #include <time.h>
 #include <unistd.h>
@@ -36,7 +34,7 @@ char *_ahttpd_log_level(int logtype) {
         default:
             return "UNKNOW";
     }
-}//ahttpd_log_level
+}//_ahttpd_log_level
 int _ahttpd_log_mv(char *filename) {
     int status, len, i = 1;
     char new_filename[PATH_MAX];
@@ -51,7 +49,7 @@ int _ahttpd_log_mv(char *filename) {
     } while (status != 0);
     unlink(filename);
     return 0;
-}//ahttpd_log_mv
+}//_ahttpd_log_mv
 int _ahttpd_log_open(char *filename) {
     int status;
     if (filename == NULL) {
@@ -73,7 +71,7 @@ int _ahttpd_log_open(char *filename) {
         }
     } while (status < 0);
     return status;
-}//ahttpd_log_open
+}//_ahttpd_log_open
 int ahttpd_log(int logtype, char *logfmt, ...) {
     int len;
     time_t now_time;
@@ -122,7 +120,7 @@ errout:
     openlog(PROCESS_NAME, LOG_PID, LOG_USER);
     syslog(LOG_ERR, "program crash. %s close failed. %s", file_type ? "error_log" : "access_log", strerror(errno));
     _exit(-1);
-}//ahttpd_log_close
+}//_ahttpd_log_close
 int ahttpd_log_create(char *access_filename, char *error_filename) {
     int file_type, access_fd, error_fd;
 

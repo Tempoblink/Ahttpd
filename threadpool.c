@@ -4,7 +4,6 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/_select.h>
 #include <unistd.h>
 
 #define DEFAULT_ADD 5

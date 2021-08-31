@@ -10,7 +10,7 @@
 int main(int argc, char const *argv[]) {
     ahttpd_log_create(NULL, NULL);
     int sockfd = ahttpd_socket(AF_INET, SOCK_STREAM, 0);
-    setnoblock(sockfd);
+    ahttpd_setnoblock(sockfd);
     struct sockaddr_in server_info;
     memset(&server_info, 0x00, sizeof(struct sockaddr_in));
     server_info.sin_family = AF_INET;
